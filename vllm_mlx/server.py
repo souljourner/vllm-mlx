@@ -1357,6 +1357,10 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
     if request.tools:
         chat_kwargs["tools"] = convert_tools_for_template(request.tools)
 
+    # Pass chat template kwargs (e.g. enable_thinking) to engine
+    if request.chat_template_kwargs:
+        chat_kwargs["chat_template_kwargs"] = request.chat_template_kwargs
+
     if request.stream:
         return StreamingResponse(
             _disconnect_guard(
@@ -1871,8 +1875,13 @@ async def stream_chat_completion(
     is_thinking_model = "nemotron" in request.model.lower() and not _reasoning_parser
     think_prefix_sent = False
 
+    # Skip reasoning parser when thinking is explicitly disabled
+    _skip_reasoning = False
+    if hasattr(request, "chat_template_kwargs") and request.chat_template_kwargs:
+        _skip_reasoning = request.chat_template_kwargs.get("enable_thinking") is False
+
     # Reset reasoning parser state for this stream
-    if _reasoning_parser:
+    if _reasoning_parser and not _skip_reasoning:
         _reasoning_parser.reset_state()
 
     # Track accumulated text for reasoning parser
@@ -1916,8 +1925,8 @@ async def stream_chat_completion(
         if hasattr(output, "completion_tokens") and output.completion_tokens:
             completion_tokens = output.completion_tokens
 
-        # Use reasoning parser if enabled
-        if _reasoning_parser and delta_text:
+        # Use reasoning parser if enabled (skip when thinking is off)
+        if _reasoning_parser and delta_text and not _skip_reasoning:
             previous_text = accumulated_text
             accumulated_text += delta_text
             delta_msg = _reasoning_parser.extract_reasoning_streaming(

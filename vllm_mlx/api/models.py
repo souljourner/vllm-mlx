@@ -174,6 +174,8 @@ class ChatCompletionRequest(BaseModel):
     video_max_frames: int | None = None
     # Request timeout in seconds (None = use server default)
     timeout: float | None = None
+    # Chat template kwargs (e.g. enable_thinking for Qwen3.5)
+    chat_template_kwargs: dict | None = None
 
 
 class AssistantMessage(BaseModel):

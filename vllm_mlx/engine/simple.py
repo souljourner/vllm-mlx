@@ -276,6 +276,7 @@ class SimpleEngine(BaseEngine):
                     messages=messages,
                     max_tokens=max_tokens,
                     temperature=temperature,
+                    tools=template_tools,
                     **kwargs,
                 )
                 text = clean_output_text(output.text)
@@ -351,6 +352,7 @@ class SimpleEngine(BaseEngine):
                         messages=messages,
                         max_tokens=max_tokens,
                         temperature=temperature,
+                        tools=template_tools,
                         **kwargs,
                     )
                 )
@@ -380,9 +382,13 @@ class SimpleEngine(BaseEngine):
         # For LLM, apply chat template and stream
         tokenizer = self._model.tokenizer
         if hasattr(tokenizer, "apply_chat_template"):
-            # Disable thinking mode for coder models since it interferes
-            # with tool call parsing (tags leak as raw text).
-            enable_thinking = "coder" not in self._model_name.lower()
+            # Respect request-level chat_template_kwargs (e.g. enable_thinking toggle)
+            req_chat_kwargs = kwargs.pop("chat_template_kwargs", {}) or {}
+            # Default: disable thinking for coder models
+            if "enable_thinking" not in req_chat_kwargs:
+                enable_thinking = "coder" not in self._model_name.lower()
+            else:
+                enable_thinking = req_chat_kwargs["enable_thinking"]
             template_kwargs = {
                 "tokenize": False,
                 "add_generation_prompt": True,

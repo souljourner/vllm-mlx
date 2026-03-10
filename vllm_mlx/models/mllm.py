@@ -1142,6 +1142,14 @@ class MLXMultimodalLM:
             all_images.extend(frames)
             logger.info(f"Added {len(frames)} frames from video: {video_path}")
 
+        # Extract chat_template_kwargs for enable_thinking and tools support
+        chat_template_kwargs = kwargs.pop("chat_template_kwargs", {}) or {}
+
+        # Pass tools to chat template so model sees tool definitions
+        _tools = kwargs.pop("tools", None)
+        if _tools:
+            chat_template_kwargs["tools"] = _tools
+
         # Apply chat template directly - messages are already properly structured
         logger.info(
             f"Applying chat template with {len(chat_messages)} messages, {len(all_images)} images"
@@ -1157,6 +1165,7 @@ class MLXMultimodalLM:
                 self.processor,
                 chat_messages,
                 add_generation_prompt=True,
+                **chat_template_kwargs,
             )
         except Exception as e:
             logger.warning(
@@ -1501,6 +1510,14 @@ class MLXMultimodalLM:
             )
             all_images.extend(frames)
 
+        # Extract chat_template_kwargs for enable_thinking and tools support
+        chat_template_kwargs = kwargs.pop("chat_template_kwargs", {}) or {}
+
+        # Pass tools to chat template so model sees tool definitions
+        _tools = kwargs.pop("tools", None)
+        if _tools:
+            chat_template_kwargs["tools"] = _tools
+
         # Apply chat template directly - messages are already properly structured
         try:
             # Use get_chat_template directly since messages are already properly formatted
@@ -1508,6 +1525,7 @@ class MLXMultimodalLM:
                 self.processor,
                 chat_messages,
                 add_generation_prompt=True,
+                **chat_template_kwargs,
             )
         except Exception as e:
             logger.warning(
