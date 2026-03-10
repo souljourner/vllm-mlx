@@ -1101,6 +1101,13 @@ class MLXMultimodalLM:
                         elif item_type == "video":
                             videos.append(item.get("video", item.get("url", "")))
 
+                        elif item_type == "video_url":  # OpenAI-compatible format
+                            vid_url = item.get("video_url", {})
+                            if isinstance(vid_url, str):
+                                videos.append(vid_url)
+                            elif isinstance(vid_url, dict):
+                                videos.append(vid_url.get("url", ""))
+
             # Build properly structured message for Qwen3-VL-MoE
             # Format: {"role": "...", "content": [{"type": "image"}, ..., {"type": "text", "text": "..."}]}
             if msg_text or msg_image_count > 0:
@@ -1469,6 +1476,13 @@ class MLXMultimodalLM:
 
                         elif item_type == "video":
                             videos.append(item.get("video", item.get("url", "")))
+
+                        elif item_type == "video_url":  # OpenAI-compatible format
+                            vid_url = item.get("video_url", {})
+                            if isinstance(vid_url, str):
+                                videos.append(vid_url)
+                            elif isinstance(vid_url, dict):
+                                videos.append(vid_url.get("url", ""))
 
             # Build properly structured message for Qwen3-VL-MoE
             # Format: {"role": "...", "content": [{"type": "image"}, ..., {"type": "text", "text": "..."}]}
