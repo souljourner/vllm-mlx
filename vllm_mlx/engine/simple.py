@@ -97,6 +97,26 @@ class SimpleEngine(BaseEngine):
         self._loaded = True
         logger.info(f"SimpleEngine loaded: {self._model_name} (MLLM={self._is_mllm})")
 
+        # Configure MLX memory for high-memory machines.
+        # Keep model weights and caches pinned in memory for fast inference.
+        try:
+            import mlx.core as mx
+            info = mx.device_info() if hasattr(mx, "device_info") else mx.metal.device_info()
+            total_mem = info.get("memory_size", 0)
+            max_wired = info.get("max_recommended_working_set_size", 0)
+            if total_mem > 0:
+                mx.set_memory_limit(int(total_mem * 0.95))
+                mx.set_cache_limit(int(total_mem * 0.90))
+                logger.info(
+                    f"MLX memory configured: limit={total_mem * 0.95 / 1e9:.0f}GB, "
+                    f"cache={total_mem * 0.90 / 1e9:.0f}GB"
+                )
+            if max_wired > 0:
+                mx.set_wired_limit(max_wired)
+                logger.info(f"MLX wired limit set to {max_wired / 1e9:.0f}GB")
+        except Exception as e:
+            logger.warning(f"Failed to configure MLX memory limits: {e}")
+
     async def stop(self) -> None:
         """Stop the engine and cleanup resources."""
         self._model = None
