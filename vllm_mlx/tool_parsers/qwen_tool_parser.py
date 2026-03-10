@@ -43,6 +43,26 @@ class QwenToolParser(ToolParser):
     # Pattern for bracket-style: [Calling tool: func_name({...})]
     BRACKET_PATTERN = re.compile(r"\[Calling tool:\s*(\w+)\((\{.*?\})\)\]", re.DOTALL)
 
+    # Possible tool call marker prefixes to buffer before confirming
+    _TOOL_MARKERS = ["<tool_call>", "[Calling tool:"]
+
+    def __init__(self, tokenizer=None):
+        super().__init__(tokenizer)
+        self._pending_content = ""
+
+    def reset(self) -> None:
+        super().reset()
+        self._pending_content = ""
+
+    @staticmethod
+    def _ends_with_marker_prefix(text: str, markers: list[str]) -> bool:
+        """Check if text ends with a prefix of any tool call marker."""
+        for marker in markers:
+            for length in range(1, len(marker)):
+                if text.endswith(marker[:length]):
+                    return True
+        return False
+
     def extract_tool_calls(
         self, model_output: str, request: dict[str, Any] | None = None
     ) -> ExtractedToolCallInformation:
@@ -131,7 +151,20 @@ class QwenToolParser(ToolParser):
         )
 
         if not has_tool_marker:
+            # Check if trailing text could be the start of a tool marker
+            # (e.g., "<", "<tool", "<tool_call"). Buffer until we know.
+            if self._ends_with_marker_prefix(current_text, self._TOOL_MARKERS):
+                self._pending_content += delta_text
+                return None
+            # Not a prefix — flush any pending content with this delta
+            if self._pending_content:
+                flushed = self._pending_content + delta_text
+                self._pending_content = ""
+                return {"content": flushed}
             return {"content": delta_text}
+
+        # Clear pending buffer — it was a real tool call prefix
+        self._pending_content = ""
 
         # If we're in a tool call, accumulate and parse at the end.
         # Check current_text (not delta_text) because closing tags like
